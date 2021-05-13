@@ -75,7 +75,7 @@ func addUser(w http.ResponseWriter, r *http.Request) {
 	case user.Lastname == "" || len(user.Lastname) > 256:
 		http.Error(w, "Incorrect users lastname!", http.StatusBadRequest)
 		return
-	case user.Email == "" || len(user.Email) > 256 || valid(user.Email) != true:
+	case user.Email == "" || len(user.Email) > 256 || isEmail(user.Email) != true:
 		http.Error(w, "Incorrect users email!", http.StatusBadRequest)
 		return
 	case err != nil || user.Age < 1 || user.Age > 256:
@@ -84,10 +84,48 @@ func addUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db.QueryRow("insert into Users (firstname, lastname, email, age, created) values ($1, $2, $3, $4, $5) returning id",
-		"Vasya", "Ivanov", "my@mail.gg", 22, time.Now()).Scan(&user.ID)
+		user.Firstname, user.Lastname, user.Email, user.Age, time.Now()).Scan(&user.ID)
 
 	msg = fmt.Sprintf("The user %v was added", user.ID)
+	fmt.Fprint(w, msg)
+}
 
+// Show user by ID
+func showUser(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != "GET" {
+		http.Error(w, http.StatusText(405), 405)
+		return
+	}
+
+	vars := mux.Vars(r)
+	id := vars["key"]
+
+	if isUUID(id) != true {
+		http.Error(w, "Incorrect ID", http.StatusBadRequest)
+		return
+	}
+
+	row := db.QueryRow("SELECT * FROM users WHERE id = $1", id)
+
+	user := tUser{}
+
+	err := row.Scan(&user.ID, &user.Firstname, &user.Lastname,
+		&user.Email, &user.Age, &user.Created)
+	switch err {
+	case sql.ErrNoRows:
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	case nil:
+		log.Print("Request completed successfully")
+	default:
+		log.Println(err)
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+
+	msg := fmt.Sprintf("User data:\n%v, %s, %s, %d, %v\n", user.ID,
+		user.Firstname, user.Lastname, user.Age, user.Created)
 	fmt.Fprint(w, msg)
 }
 
@@ -95,6 +133,7 @@ func main() {
 
 	//Routing
 	router := mux.NewRouter()
+	router.HandleFunc("/users/{key}", showUser)
 	router.HandleFunc("/users", addUser)
 	router.HandleFunc("/", homePage)
 	http.Handle("/", router)

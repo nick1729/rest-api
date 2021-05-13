@@ -10,35 +10,33 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const (
-	dUser = "login"
-	dPass = "pass"
-	dHost = "url"
-	dPort = "port"
-	dName = "table"
-)
-
 var db *sql.DB
 
 // Open DB and check connection
 func init() {
 
 	var (
-		connStr         string
-		errCon, errPing error
+		c       tConfig
+		connStr string
+		err     error
 	)
 
-	connStr = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		dHost, dPort, dUser, dPass, dName)
-
-	db, errCon = sql.Open("postgres", connStr)
-	if errCon != nil {
-		log.Fatal(errCon)
+	c, err = loadCfg("./config/config.json")
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	errPing = db.Ping()
-	if errPing != nil {
-		log.Fatal(errPing)
+	connStr = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		c.Ip, c.Port, c.Login, c.Pass, c.Table)
+
+	db, err = sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 

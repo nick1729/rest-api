@@ -14,11 +14,11 @@ type tConfig struct {
 	Table string `json:"table_name"`
 }
 
-type User struct {
+type tUser struct {
 	ID        uuid.UUID
 	Firstname string
 	Lastname  string
 	Email     string
-	Age       uint
+	Age       uint64
 	Created   time.Time
 }

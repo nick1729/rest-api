@@ -1,4 +1,6 @@
 # rest-api
+[![Go Report Card](https://goreportcard.com/badge/github.com/nick1729/rest-api?style=flat-square)](https://goreportcard.com/badge/github.com/nick1729/rest-api)
+
 Test task
 <p><code>git clone github.com/nick1729/rest-api.git</code></p>
 

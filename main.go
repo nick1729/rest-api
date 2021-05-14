@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"time"
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -39,10 +43,15 @@ func init() {
 		log.Fatal(err)
 	}
 
-	log.Print("DB is connected...")
+	log.Print("DB connected")
 }
 
 func main() {
+
+	var (
+		wait time.Duration = time.Second * 15
+		err  error
+	)
 
 	// Routing
 	router := mux.NewRouter()
@@ -51,9 +60,30 @@ func main() {
 	router.HandleFunc("/users", addUser).Methods("POST")
 	http.Handle("/", router)
 
-	// Start service
-	log.Print("Server is listening...")
-	if err := http.ListenAndServe(":8000", nil); err != nil {
-		log.Fatal(err)
+	srv := &http.Server{
+		Addr:         "localhost:8000",
+		WriteTimeout: time.Second * 15,
+		ReadTimeout:  time.Second * 15,
+		IdleTimeout:  time.Second * 60,
+		Handler:      router,
 	}
+
+	// Start service
+	go func() {
+		log.Print("Server is listening...")
+		if err = srv.ListenAndServe(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	<-c
+
+	ctx, cancel := context.WithTimeout(context.Background(), wait)
+	defer cancel()
+
+	srv.Shutdown(ctx)
+	log.Print("Shutting down...")
+	os.Exit(0)
 }

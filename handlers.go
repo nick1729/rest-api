@@ -6,26 +6,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/mail"
+	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
-
-// Email validation
-func isEmail(e string) bool {
-
-	var err error
-
-	_, err = mail.ParseAddress(e)
-	if err != nil {
-		return false
-	}
-
-	return true
-}
 
 // UUID validation
 func isUUID(u string) bool {
@@ -38,6 +25,71 @@ func isUUID(u string) bool {
 	}
 
 	return true
+}
+
+// Name validation
+func isName(n string) bool {
+
+	var (
+		re   *regexp.Regexp
+		expr string
+		ok   bool
+	)
+
+	expr = `^[A-Z][a-z]+${1,64}`
+	re = regexp.MustCompile(expr)
+	ok = re.MatchString(n)
+
+	return ok
+}
+
+// Email validation
+func isEmail(e string) bool {
+
+	var (
+		re   *regexp.Regexp
+		expr string
+		ok   bool
+	)
+
+	expr = `^((([0-9A-Za-z]{1}[-0-9A-z\.]{1,64}[0-9A-Za-z]{1}))@([-A-Za-z]{1,32}\.){1,2}[-A-Za-z]{2,4})$`
+	re = regexp.MustCompile(expr)
+	ok = re.MatchString(e)
+
+	return ok
+}
+
+// Checking keys
+func checkKeys(r *http.Request) (tUser, error) {
+
+	var (
+		u   tUser
+		err error
+	)
+
+	// read keys
+	u.Firstname = r.FormValue("firstname")
+	u.Lastname = r.FormValue("lastname")
+	u.Email = r.FormValue("email")
+	u.Age, err = strconv.ParseUint(r.FormValue("age"), 10, 32)
+
+	// check data
+	switch {
+	case isName(u.Firstname) != true:
+		err = errors.New("Incorrect user firstname!")
+		return u, err
+	case isName(u.Lastname) != true:
+		err = errors.New("Incorrect user lastname!")
+		return u, err
+	case isEmail(u.Email) != true:
+		err = errors.New("Incorrect user email!")
+		return u, err
+	case err != nil || u.Age < 1 || u.Age > 160:
+		err = errors.New("Incorrect user age!")
+		return u, err
+	}
+
+	return u, nil
 }
 
 // Add new user
@@ -144,37 +196,4 @@ func editUser(w http.ResponseWriter, r *http.Request) {
 	msg = "Users data successfully updated"
 	fmt.Fprintln(w, msg)
 	log.Print(msg)
-}
-
-//
-func checkKeys(r *http.Request) (tUser, error) {
-
-	var (
-		u   tUser
-		err error
-	)
-
-	// read keys
-	u.Firstname = r.FormValue("firstname")
-	u.Lastname = r.FormValue("lastname")
-	u.Email = r.FormValue("email")
-	u.Age, err = strconv.ParseUint(r.FormValue("age"), 10, 32)
-
-	// check data
-	switch {
-	case u.Firstname == "" || len(u.Firstname) > 256:
-		err = errors.New("Incorrect user firstname!")
-		return u, err
-	case u.Lastname == "" || len(u.Lastname) > 256:
-		err = errors.New("Incorrect user lastname!")
-		return u, err
-	case u.Email == "" || len(u.Email) > 256 || isEmail(u.Email) != true:
-		err = errors.New("Incorrect user email!")
-		return u, err
-	case err != nil || u.Age < 1 || u.Age > 256:
-		err = errors.New("Incorrect user age!")
-		return u, err
-	}
-
-	return u, nil
 }

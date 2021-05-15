@@ -2,45 +2,28 @@ package main
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"rest-api/internal/database"
+	"rest-api/internal/handlers"
 	"time"
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 )
 
-var db *sql.DB
+var (
+	wait time.Duration
+	err  error
+)
 
-// Open DB and check connection
 func init() {
 
-	var (
-		c       tConfig
-		connStr string
-		err     error
-	)
-
-	c, err = loadCfg("./config/config.json")
+	handlers.DB, err = database.Dial()
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	connStr = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		c.Ip, c.Port, c.Login, c.Pass, c.Table)
-
-	db, err = sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 
 	log.Print("DB connected")
@@ -48,16 +31,11 @@ func init() {
 
 func main() {
 
-	var (
-		wait time.Duration = time.Second * 15
-		err  error
-	)
-
 	// Routing
 	router := mux.NewRouter()
-	router.HandleFunc("/users/", editUser).Methods("PUT")
-	router.HandleFunc("/users/{key}", showUser).Methods("GET")
-	router.HandleFunc("/users", addUser).Methods("POST")
+	router.HandleFunc("/users/", handlers.EditUser).Methods("PUT")
+	router.HandleFunc("/users/{key}", handlers.ShowUser).Methods("GET")
+	router.HandleFunc("/users", handlers.AddUser).Methods("POST")
 	http.Handle("/", router)
 
 	srv := &http.Server{
@@ -80,6 +58,7 @@ func main() {
 	signal.Notify(c, os.Interrupt)
 	<-c
 
+	wait = time.Second * 15
 	ctx, cancel := context.WithTimeout(context.Background(), wait)
 	defer cancel()
 

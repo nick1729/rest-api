@@ -1,24 +1,25 @@
-package main
+package config
 
 import (
 	"encoding/json"
 	"os"
+	"rest-api/internal/types"
 	"testing"
 )
 
 // Tests loading and decoding json config
 func TestLoadConfigData(t *testing.T) {
 
-	var c tConfig
+	var c types.Config
 
-	file, errF := os.Open("./tests/cfgdec_test.json")
+	file, errF := os.Open("./config_test.json")
 	if errF != nil {
 		t.Error("Expected:", nil, "got:", errF)
 	}
 	defer file.Close()
 
 	decoder := json.NewDecoder(file)
-	c = tConfig{}
+	c = types.Config{}
 	errDec := decoder.Decode(&c)
 	if errDec != nil {
 		t.Error("Expected:", nil, "got:", errDec)

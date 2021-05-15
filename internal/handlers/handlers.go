@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"database/sql"
@@ -7,12 +7,15 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"rest-api/internal/types"
 	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
+
+var DB *sql.DB
 
 // UUID validation
 func isUUID(u string) bool {
@@ -60,10 +63,10 @@ func isEmail(e string) bool {
 }
 
 // Checking keys
-func checkKeys(r *http.Request) (tUser, error) {
+func checkKeys(r *http.Request) (types.User, error) {
 
 	var (
-		u   tUser
+		u   types.User
 		err error
 	)
 
@@ -94,10 +97,10 @@ func checkKeys(r *http.Request) (tUser, error) {
 
 // Add new user
 // /users?firstname=Gena&lastname=Ivanov&email=qweqw@mail.gg&age=29
-func addUser(w http.ResponseWriter, r *http.Request) {
+func AddUser(w http.ResponseWriter, r *http.Request) {
 
 	var (
-		u   tUser
+		u   types.User
 		err error
 		msg string
 	)
@@ -110,7 +113,7 @@ func addUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// insert new data into db
-	db.QueryRow("INSERT INTO Users (firstname, lastname, email, age, created) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+	DB.QueryRow("INSERT INTO Users (firstname, lastname, email, age, created) VALUES ($1, $2, $3, $4, $5) RETURNING id",
 		u.Firstname, u.Lastname, u.Email, u.Age, time.Now()).Scan(&u.ID)
 
 	msg = fmt.Sprintf("The user %v was added", u.ID)
@@ -120,7 +123,7 @@ func addUser(w http.ResponseWriter, r *http.Request) {
 
 // Show user by ID
 // /users/a5657a25-b62d-45f8-96f6-41aab04f9ec0
-func showUser(w http.ResponseWriter, r *http.Request) {
+func ShowUser(w http.ResponseWriter, r *http.Request) {
 
 	// read key
 	vars := mux.Vars(r)
@@ -134,9 +137,9 @@ func showUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// select table row
-	row := db.QueryRow("SELECT * FROM users WHERE id = $1", id)
+	row := DB.QueryRow("SELECT * FROM users WHERE id = $1", id)
 
-	u := tUser{}
+	u := types.User{}
 
 	// scan data
 	err := row.Scan(&u.ID, &u.Firstname, &u.Lastname,
@@ -163,10 +166,10 @@ func showUser(w http.ResponseWriter, r *http.Request) {
 
 // Edit user data by ID
 // /users/?id=a5657a25-b62d-45f8-96f6-41aab04f9ec0&firstname=Qwe&lastname=Rty&email=qwe@rty.gg&age=23
-func editUser(w http.ResponseWriter, r *http.Request) {
+func EditUser(w http.ResponseWriter, r *http.Request) {
 
 	var (
-		u       tUser
+		u       types.User
 		err     error
 		id, msg string
 	)
@@ -184,7 +187,7 @@ func editUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update row data
-	_, err = db.Exec("UPDATE users SET firstname = $1, lastname = $2, email = $3, age = $4, created = $5 WHERE id = $6",
+	_, err = DB.Exec("UPDATE users SET firstname = $1, lastname = $2, email = $3, age = $4, created = $5 WHERE id = $6",
 		u.Firstname, u.Lastname, u.Email, u.Age, time.Now(), id)
 	if err != nil {
 		msg = fmt.Sprintf("Failed to update user %s\n", id)

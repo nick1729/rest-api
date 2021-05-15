@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// User DB struct
 type User struct {
 	ID        uuid.UUID
 	Firstname string

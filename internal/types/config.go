@@ -1,5 +1,6 @@
 package types
 
+// Config file struct
 type Config struct {
 	Login string `json:"db_login"`
 	Pass  string `json:"db_password"`

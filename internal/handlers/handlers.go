@@ -9,12 +9,14 @@ import (
 	"regexp"
 	"rest-api/internal/types"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
+// DB link
 var DB *sql.DB
 
 // UUID validation
@@ -95,8 +97,7 @@ func checkKeys(r *http.Request) (types.User, error) {
 	return u, nil
 }
 
-// Add new user
-// /users?firstname=Gena&lastname=Ivanov&email=qweqw@mail.gg&age=29
+// AddUser writes new user data and returns UUID
 func AddUser(w http.ResponseWriter, r *http.Request) {
 
 	var (
@@ -112,7 +113,7 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// insert new data into db
+	// insert new data into DB
 	DB.QueryRow("INSERT INTO Users (firstname, lastname, email, age, created) VALUES ($1, $2, $3, $4, $5) RETURNING id",
 		u.Firstname, u.Lastname, u.Email, u.Age, time.Now()).Scan(&u.ID)
 
@@ -121,8 +122,97 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 	log.Print(msg)
 }
 
-// Show user by ID
-// /users/a5657a25-b62d-45f8-96f6-41aab04f9ec0
+// DeleteUser erases user data by ID
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
+
+	var (
+		err error
+		msg string
+	)
+
+	// read key
+	vars := mux.Vars(r)
+	id := vars["key"]
+
+	// check id
+	if isUUID(id) != true {
+		http.Error(w, "Incorrect ID", http.StatusBadRequest)
+		log.Printf("Incorrect ID %s", id)
+		return
+	}
+
+	_, err = DB.Exec("DELETE FROM users WHERE id = $1", id)
+	if err != nil {
+		msg = fmt.Sprintf("Failed to delete user %s\n", id)
+		http.Error(w, msg, http.StatusBadRequest)
+		log.Print(err, msg)
+		return
+	}
+
+	msg = fmt.Sprintf("User with ID %s successfully deleted", id)
+	log.Print(msg)
+	fmt.Fprintln(w, msg)
+}
+
+// ShowAllUsers prints all users
+func ShowAllUsers(w http.ResponseWriter, r *http.Request) {
+
+	rows, err := DB.Query("select * from users")
+	if err != nil {
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+	defer rows.Close()
+
+	users := []types.User{}
+
+	for rows.Next() {
+		u := types.User{}
+		err := rows.Scan(&u.ID, &u.Firstname, &u.Lastname,
+			&u.Email, &u.Age, &u.Created)
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+		users = append(users, u)
+	}
+
+	msg := []string{}
+
+	for _, u := range users {
+		msg = append(msg, fmt.Sprintf("%v, %s, %s, %s, %d, %s\n",
+			u.ID, u.Firstname, u.Lastname, u.Email, u.Age,
+			u.Created.Format("2.1.2006 15:04")))
+	}
+
+	log.Print("All users printed")
+	fmt.Fprint(w, "All users:\n"+strings.Join(msg, ""))
+}
+
+// ShowHomePage prints start page
+func ShowHomePage(w http.ResponseWriter, r *http.Request) {
+
+	var s string
+
+	s = `<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <title>Hello!</title>
+    </head>
+
+    <body>
+        <h1>Hello World!</h1>
+        <p>This is a test home page</p>
+    </body>
+
+</html>`
+
+	fmt.Fprint(w, s)
+}
+
+// ShowUser prints user data by ID
 func ShowUser(w http.ResponseWriter, r *http.Request) {
 
 	// read key
@@ -152,20 +242,19 @@ func ShowUser(w http.ResponseWriter, r *http.Request) {
 		log.Print(err, id)
 		return
 	case nil:
-		log.Printf("Request completed successfully with ID %s", id)
+		log.Printf("Printed user data with ID %s", id)
 	default:
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		log.Print(err, id)
 		return
 	}
 
-	msg := fmt.Sprintf("User data:\n%v, %s, %s, %d, %v\n", u.ID,
-		u.Firstname, u.Lastname, u.Age, u.Created)
+	msg := fmt.Sprintf("User data:\n%v, %s, %s, %d, %s\n", u.ID,
+		u.Firstname, u.Lastname, u.Age, u.Created.Format("2.1.2006 15:04"))
 	fmt.Fprint(w, msg)
 }
 
-// Edit user data by ID
-// /users/?id=a5657a25-b62d-45f8-96f6-41aab04f9ec0&firstname=Qwe&lastname=Rty&email=qwe@rty.gg&age=23
+// EditUser writes new user data by ID
 func EditUser(w http.ResponseWriter, r *http.Request) {
 
 	var (
@@ -174,11 +263,13 @@ func EditUser(w http.ResponseWriter, r *http.Request) {
 		id, msg string
 	)
 
+	// check id
 	id = r.FormValue("id")
 	if isUUID(id) != true {
 		http.Error(w, "Error! Incorrect user ID!", http.StatusBadRequest)
 	}
 
+	// check keys
 	u, err = checkKeys(r)
 	if err != nil {
 		msg = fmt.Sprintf("Error! %s", err.Error())

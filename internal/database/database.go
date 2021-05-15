@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"rest-api/config"
 	"rest-api/internal/types"
-
-	_ "github.com/lib/pq"
 )
 
-// Open DB and check connection
+// Dial opens DB and checks connection
 func Dial() (*sql.DB, error) {
 
 	var (

@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"log"
 	"os"
-	t "rest-api/internal/types"
+	"rest-api/internal/types"
 )
 
-// Loads config from file (config.json)
-func LoadCfg(path string) (t.Config, error) {
+// LoadCfg gets and decode config data from file (config.json)
+func LoadCfg(path string) (types.Config, error) {
 
-	var c t.Config
+	var c types.Config
 
 	file, errF := os.Open(path)
 	if errF != nil {
@@ -20,7 +20,7 @@ func LoadCfg(path string) (t.Config, error) {
 	defer file.Close()
 
 	decoder := json.NewDecoder(file)
-	c = t.Config{}
+	c = types.Config{}
 	errDec := decoder.Decode(&c)
 	if errDec != nil {
 		log.Println(errDec)

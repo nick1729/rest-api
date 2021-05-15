@@ -21,6 +21,7 @@ var (
 
 func init() {
 
+	// Open and check DB
 	handlers.DB, err = database.Dial()
 	if err != nil {
 		log.Panic(err)
@@ -33,9 +34,12 @@ func main() {
 
 	// Routing
 	router := mux.NewRouter()
-	router.HandleFunc("/users/", handlers.EditUser).Methods("PUT")
+	router.HandleFunc("/users/delete/{key}", handlers.DeleteUser).Methods("PUT")
+	router.HandleFunc("/users/all", handlers.ShowAllUsers).Methods("GET")
 	router.HandleFunc("/users/{key}", handlers.ShowUser).Methods("GET")
+	router.HandleFunc("/users/", handlers.EditUser).Methods("PUT")
 	router.HandleFunc("/users", handlers.AddUser).Methods("POST")
+	router.HandleFunc("/", handlers.ShowHomePage).Methods("GET")
 	http.Handle("/", router)
 
 	srv := &http.Server{

@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"rest-api/internal/database"
 	"rest-api/internal/handlers"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -19,22 +20,18 @@ var (
 	err  error
 )
 
-func init() {
-
-	// Open and check DB
+func run() error {
+	// open and check DB
 	handlers.DB, err = database.Dial()
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 
 	log.Print("DB connected")
-}
 
-func main() {
-
-	// Routing
+	// routing
 	router := mux.NewRouter()
-	router.HandleFunc("/users/delete/{key}", handlers.DeleteUser).Methods("PUT")
+	router.HandleFunc("/users/delete/{key}", handlers.DeleteUser).Methods("DELETE")
 	router.HandleFunc("/users/all", handlers.ShowAllUsers).Methods("GET")
 	router.HandleFunc("/users/{key}", handlers.ShowUser).Methods("GET")
 	router.HandleFunc("/users/", handlers.EditUser).Methods("PUT")
@@ -50,16 +47,16 @@ func main() {
 		Handler:      router,
 	}
 
-	// Start service
+	// start service
 	go func() {
 		log.Print("Server is listening...")
 		if err = srv.ListenAndServe(); err != nil {
-			log.Println(err)
+			log.Print(err)
 		}
 	}()
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-c
 
 	wait = time.Second * 15
@@ -69,4 +66,16 @@ func main() {
 	srv.Shutdown(ctx)
 	log.Print("Shutting down...")
 	os.Exit(0)
+
+	return nil
+}
+
+func main() {
+
+	var err error
+
+	err = run()
+	if err != nil {
+		log.Fatal(err)
+	}
 }

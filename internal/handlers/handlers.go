@@ -97,37 +97,14 @@ func checkKeys(r *http.Request) (types.User, error) {
 	return u, nil
 }
 
-// AddUser writes new user data and returns UUID
-func AddUser(w http.ResponseWriter, r *http.Request) {
-
-	var (
-		u   types.User
-		err error
-		msg string
-	)
-
-	u, err = checkKeys(r)
-	if err != nil {
-		msg = fmt.Sprintf("Error! %s", err.Error())
-		http.Error(w, msg, http.StatusBadRequest)
-		return
-	}
-
-	// insert new data into DB
-	DB.QueryRow("INSERT INTO Users (firstname, lastname, email, age, created) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-		u.Firstname, u.Lastname, u.Email, u.Age, time.Now()).Scan(&u.ID)
-
-	msg = fmt.Sprintf("The user %v was added", u.ID)
-	fmt.Fprint(w, msg)
-	log.Print(msg)
-}
-
 // DeleteUser erases user data by ID
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	var (
-		err error
-		msg string
+		res   sql.Result
+		err   error
+		count int64
+		msg   string
 	)
 
 	// read key
@@ -136,17 +113,29 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	// check id
 	if isUUID(id) != true {
-		http.Error(w, "Incorrect ID", http.StatusBadRequest)
-		log.Printf("Incorrect ID %s", id)
+		msg = fmt.Sprintf("Error! Incorrect user ID %s", id)
+		fmt.Fprint(w, msg)
+		log.Print(msg)
 		return
 	}
 
-	_, err = DB.Exec("DELETE FROM users WHERE id = $1", id)
+	res, err = DB.Exec("DELETE FROM users WHERE id = $1", id)
 	if err != nil {
-		msg = fmt.Sprintf("Failed to delete user %s\n", id)
-		http.Error(w, msg, http.StatusBadRequest)
-		log.Print(err, msg)
+		http.Error(w, http.StatusText(500), 500)
+		log.Print(err)
 		return
+	} else {
+		count, err = res.RowsAffected()
+		if err != nil {
+			http.Error(w, http.StatusText(500), 500)
+			log.Print(err)
+			return
+		} else if count != 1 {
+			msg = fmt.Sprintf("Failed to delete user %s", id)
+			http.Error(w, msg, http.StatusBadRequest)
+			log.Print(msg)
+			return
+		}
 	}
 
 	msg = fmt.Sprintf("User with ID %s successfully deleted", id)
@@ -157,9 +146,15 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 // ShowAllUsers prints all users
 func ShowAllUsers(w http.ResponseWriter, r *http.Request) {
 
-	rows, err := DB.Query("select * from users")
+	var (
+		rows *sql.Rows
+		err  error
+	)
+
+	rows, err = DB.Query("select * from users")
 	if err != nil {
 		http.Error(w, http.StatusText(500), 500)
+		log.Print(err)
 		return
 	}
 	defer rows.Close()
@@ -189,6 +184,135 @@ func ShowAllUsers(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "All users:\n"+strings.Join(msg, ""))
 }
 
+// ShowUser prints user data by ID
+func ShowUser(w http.ResponseWriter, r *http.Request) {
+
+	var (
+		err error
+		msg string
+	)
+
+	// read key
+	vars := mux.Vars(r)
+	id := vars["key"]
+
+	// check id
+	if isUUID(id) != true {
+		msg = fmt.Sprintf("Error! Incorrect user ID %s", id)
+		fmt.Fprint(w, msg)
+		log.Print(msg)
+		return
+	}
+
+	// select table row
+	row := DB.QueryRow("SELECT * FROM users WHERE id = $1", id)
+
+	u := types.User{}
+
+	// scan data
+	err = row.Scan(&u.ID, &u.Firstname, &u.Lastname,
+		&u.Email, &u.Age, &u.Created)
+
+	// handle error
+	switch err {
+	case sql.ErrNoRows:
+		http.Error(w, "Not found", http.StatusNotFound)
+		log.Print(err, id)
+		return
+	case nil:
+		log.Printf("Printed user data with ID %s", id)
+	default:
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		log.Print(err, id)
+		return
+	}
+
+	msg = fmt.Sprintf("User data: %v, %s, %s, %d, %s", u.ID,
+		u.Firstname, u.Lastname, u.Age, u.Created.Format("2.1.2006 15:04"))
+	fmt.Fprint(w, msg)
+}
+
+// EditUser writes new user data by ID
+func EditUser(w http.ResponseWriter, r *http.Request) {
+
+	var (
+		u       types.User
+		res     sql.Result
+		count   int64
+		err     error
+		id, msg string
+	)
+
+	// check id
+	id = r.FormValue("id")
+	if isUUID(id) != true {
+		msg = fmt.Sprintf("Error! Incorrect user ID %s", id)
+		fmt.Fprint(w, msg)
+		log.Print(msg)
+		return
+	}
+
+	// check keys
+	u, err = checkKeys(r)
+	if err != nil {
+		msg = fmt.Sprintf("Error! %s", err.Error())
+		fmt.Fprint(w, msg)
+		log.Print(msg)
+		return
+	}
+
+	// update row data
+	res, err = DB.Exec("UPDATE users SET firstname = $1, lastname = $2, email = $3, age = $4, created = $5 WHERE id = $6",
+		u.Firstname, u.Lastname, u.Email, u.Age, time.Now(), id)
+	if err != nil {
+		http.Error(w, http.StatusText(500), 500)
+		log.Print(err)
+		return
+	} else {
+		count, err = res.RowsAffected()
+		if err != nil {
+			http.Error(w, http.StatusText(500), 500)
+			log.Print(err)
+			return
+		} else if count != 1 {
+			msg = fmt.Sprintf("Failed to updated user with ID %s", id)
+			http.Error(w, msg, http.StatusBadRequest)
+			log.Print(msg)
+			return
+		}
+	}
+
+	msg = fmt.Sprintf("User with ID %s successfully updated", id)
+	log.Print(msg)
+	fmt.Fprintln(w, msg)
+}
+
+// AddUser writes new user data and returns UUID
+func AddUser(w http.ResponseWriter, r *http.Request) {
+
+	var (
+		u   types.User
+		err error
+		msg string
+	)
+
+	u, err = checkKeys(r)
+	if err != nil {
+		msg = fmt.Sprintf("Error! %s", err.Error())
+		fmt.Fprint(w, msg)
+		log.Print(msg)
+		return
+	}
+
+	// insert new data into DB
+	DB.QueryRow("INSERT INTO Users (firstname, lastname, email, age, created) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+		u.Firstname, u.Lastname, u.Email, u.Age, time.Now()).Scan(&u.ID)
+
+	msg = fmt.Sprintf("The user %v was added", u.ID)
+	fmt.Fprint(w, msg)
+	log.Print(msg)
+}
+
 // ShowHomePage prints start page
 func ShowHomePage(w http.ResponseWriter, r *http.Request) {
 
@@ -210,84 +334,4 @@ func ShowHomePage(w http.ResponseWriter, r *http.Request) {
 </html>`
 
 	fmt.Fprint(w, s)
-}
-
-// ShowUser prints user data by ID
-func ShowUser(w http.ResponseWriter, r *http.Request) {
-
-	// read key
-	vars := mux.Vars(r)
-	id := vars["key"]
-
-	// check id
-	if isUUID(id) != true {
-		http.Error(w, "Incorrect ID", http.StatusBadRequest)
-		log.Printf("Incorrect ID %s", id)
-		return
-	}
-
-	// select table row
-	row := DB.QueryRow("SELECT * FROM users WHERE id = $1", id)
-
-	u := types.User{}
-
-	// scan data
-	err := row.Scan(&u.ID, &u.Firstname, &u.Lastname,
-		&u.Email, &u.Age, &u.Created)
-
-	// handle error
-	switch err {
-	case sql.ErrNoRows:
-		http.Error(w, "Not found", http.StatusNotFound)
-		log.Print(err, id)
-		return
-	case nil:
-		log.Printf("Printed user data with ID %s", id)
-	default:
-		http.Error(w, "Server error", http.StatusInternalServerError)
-		log.Print(err, id)
-		return
-	}
-
-	msg := fmt.Sprintf("User data:\n%v, %s, %s, %d, %s\n", u.ID,
-		u.Firstname, u.Lastname, u.Age, u.Created.Format("2.1.2006 15:04"))
-	fmt.Fprint(w, msg)
-}
-
-// EditUser writes new user data by ID
-func EditUser(w http.ResponseWriter, r *http.Request) {
-
-	var (
-		u       types.User
-		err     error
-		id, msg string
-	)
-
-	// check id
-	id = r.FormValue("id")
-	if isUUID(id) != true {
-		http.Error(w, "Error! Incorrect user ID!", http.StatusBadRequest)
-	}
-
-	// check keys
-	u, err = checkKeys(r)
-	if err != nil {
-		msg = fmt.Sprintf("Error! %s", err.Error())
-		http.Error(w, msg, http.StatusBadRequest)
-		return
-	}
-
-	// update row data
-	_, err = DB.Exec("UPDATE users SET firstname = $1, lastname = $2, email = $3, age = $4, created = $5 WHERE id = $6",
-		u.Firstname, u.Lastname, u.Email, u.Age, time.Now(), id)
-	if err != nil {
-		msg = fmt.Sprintf("Failed to update user %s\n", id)
-		http.Error(w, msg, http.StatusBadRequest)
-		log.Print(err, msg)
-		return
-	}
-
-	msg = "Users data successfully updated"
-	fmt.Fprintln(w, msg)
-	log.Print(msg)
 }

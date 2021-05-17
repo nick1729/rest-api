@@ -8,10 +8,10 @@ import (
 )
 
 // GetCfg parses and checks config data
-func GetCfg() (types.Config, error) {
+func GetCfg() (types.DbConfig, error) {
 
 	var (
-		c      types.Config
+		c      types.DbConfig
 		port   string
 		dbPort int
 		err    error

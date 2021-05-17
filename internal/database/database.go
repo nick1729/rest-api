@@ -11,7 +11,7 @@ import (
 func Dial() (*sql.DB, error) {
 
 	var (
-		c     types.Config
+		c       types.DbConfig
 		db      *sql.DB
 		connStr string
 		err     error

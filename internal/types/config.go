@@ -1,7 +1,7 @@
 package types
 
-// Config file struct
-type Config struct {
+// DB config file struct
+type DbConfig struct {
 	User   string
 	Pass   string
 	Host   string

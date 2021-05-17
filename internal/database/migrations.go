@@ -1,6 +1,7 @@
 package database
 
 import (
+	"os"
 	"rest-api/internal/handlers"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -18,7 +19,7 @@ func RunMigrations() error {
 	}
 
 	m, err := migrate.NewWithDatabaseInstance(
-		"file://../../internal/database/migrations",
+		os.Getenv("MIGRATIONS_PATH"),
 		"postgres",
 		driver)
 	if err != nil {

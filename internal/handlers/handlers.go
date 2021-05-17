@@ -327,12 +327,22 @@ func ShowHomePage(w http.ResponseWriter, r *http.Request) {
 
     <head>
         <meta charset="UTF-8">
-        <title>Hello!</title>
+        <title>Start page</title>
     </head>
 
     <body>
-        <h1>Hello World!</h1>
-        <p>This is a test home page</p>
+        <h1>Start page</h1>
+        <p>Usage:</p>
+        <p>Add new user:
+        http://127.0.0.1:8080/users?firstname=Name&lastname=Surname&email=mail@mail.ru&age=22/</p>
+        <p>Edit user by UUID:
+        http://127.0.0.1:8080/users/?id=UUID&firstname=Name&lastname=Surname&email=mail@mail.ru&age=27</p>
+        <p>Show user data by UUID:
+        http://127.0.0.1:8000/users/UUID</p>
+        <p>Show all users:
+        http://127.0.0.1:8080/users/all</p>
+        <p>Delete user by UUID:
+        http://127.0.0.1:8080/users/delete/UUID</p>
     </body>
 
 </html>`

@@ -48,7 +48,7 @@ func run() error {
 	http.Handle("/", router)
 
 	srv := &http.Server{
-		Addr:         ":8000",
+		Addr:         os.Getenv("HTTP_ADDR"),
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,

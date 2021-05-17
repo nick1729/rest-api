@@ -1,6 +1,6 @@
 package types
 
-// DB config file struct
+// DbConfig contains DB config file struct
 type DbConfig struct {
 	User   string
 	Pass   string

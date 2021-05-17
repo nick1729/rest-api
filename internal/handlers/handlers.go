@@ -124,18 +124,20 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(500), 500)
 		log.Print(err)
 		return
-	} else {
-		count, err = res.RowsAffected()
-		if err != nil {
-			http.Error(w, http.StatusText(500), 500)
-			log.Print(err)
-			return
-		} else if count != 1 {
-			msg = fmt.Sprintf("Failed to delete user %s", id)
-			http.Error(w, msg, http.StatusBadRequest)
-			log.Print(msg)
-			return
-		}
+	}
+
+	count, err = res.RowsAffected()
+	if err != nil {
+		http.Error(w, http.StatusText(500), 500)
+		log.Print(err)
+		return
+	}
+
+	if count != 1 {
+		msg = fmt.Sprintf("Failed to delete user %s", id)
+		http.Error(w, msg, http.StatusBadRequest)
+		log.Print(msg)
+		return
 	}
 
 	msg = fmt.Sprintf("User with ID %s successfully deleted", id)
@@ -268,18 +270,20 @@ func EditUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(500), 500)
 		log.Print(err)
 		return
-	} else {
-		count, err = res.RowsAffected()
-		if err != nil {
-			http.Error(w, http.StatusText(500), 500)
-			log.Print(err)
-			return
-		} else if count != 1 {
-			msg = fmt.Sprintf("Failed to updated user with ID %s", id)
-			http.Error(w, msg, http.StatusBadRequest)
-			log.Print(msg)
-			return
-		}
+	}
+
+	count, err = res.RowsAffected()
+	if err != nil {
+		http.Error(w, http.StatusText(500), 500)
+		log.Print(err)
+		return
+	}
+
+	if count != 1 {
+		msg = fmt.Sprintf("Failed to updated user with ID %s", id)
+		http.Error(w, msg, http.StatusBadRequest)
+		log.Print(msg)
+		return
 	}
 
 	msg = fmt.Sprintf("User with ID %s successfully updated", id)

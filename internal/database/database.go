@@ -11,19 +11,19 @@ import (
 func Dial() (*sql.DB, error) {
 
 	var (
-		cfg     types.Config
+		c     types.Config
 		db      *sql.DB
 		connStr string
 		err     error
 	)
 
-	cfg, err = config.LoadCfg("../../config/config.json")
+	c, err = config.GetCfg()
 	if err != nil {
 		return nil, err
 	}
 
 	connStr = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		cfg.Ip, cfg.Port, cfg.Login, cfg.Pass, cfg.Table)
+		c.Host, c.Port, c.User, c.Pass, c.DbName)
 
 	db, err = sql.Open("postgres", connStr)
 	if err != nil {

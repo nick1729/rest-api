@@ -29,6 +29,14 @@ func run() error {
 
 	log.Print("DB connected")
 
+	// make migrations
+	err = database.RunMigrations()
+	if err != nil {
+		return err
+	}
+
+	log.Print("DB updated")
+
 	// routing
 	router := mux.NewRouter()
 	router.HandleFunc("/users/delete/{key}", handlers.DeleteUser).Methods("DELETE")
@@ -40,7 +48,7 @@ func run() error {
 	http.Handle("/", router)
 
 	srv := &http.Server{
-		Addr:         "localhost:8000",
+		Addr:         ":8000",
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,

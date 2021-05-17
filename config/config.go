@@ -1,31 +1,34 @@
 package config
 
 import (
-	"encoding/json"
 	"log"
 	"os"
 	"rest-api/internal/types"
+	"strconv"
 )
 
-// LoadCfg gets and decode config data from file (config.json)
-func LoadCfg(path string) (types.Config, error) {
+// GetCfg parses and checks config data
+func GetCfg() (types.Config, error) {
 
-	var c types.Config
+	var (
+		c      types.Config
+		port   string
+		dbPort int
+		err    error
+	)
 
-	file, errF := os.Open(path)
-	if errF != nil {
-		log.Println(errF)
-		return c, errF
+	port = os.Getenv("POSTGRES_PORT")
+	dbPort, err = strconv.Atoi(port)
+	if err != nil {
+		log.Print("Failed to parse database port")
+		return c, err
 	}
-	defer file.Close()
 
-	decoder := json.NewDecoder(file)
-	c = types.Config{}
-	errDec := decoder.Decode(&c)
-	if errDec != nil {
-		log.Println(errDec)
-		return c, errDec
-	}
+	c.User = os.Getenv("POSTGRES_USER")
+	c.Pass = os.Getenv("POSTGRES_PASSWORD")
+	c.Host = os.Getenv("POSTGRES_HOST")
+	c.Port = dbPort
+	c.DbName = os.Getenv("POSTGRES_DB")
 
 	return c, nil
 }

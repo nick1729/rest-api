@@ -1,0 +1,32 @@
+version: '3.0'
+
+services:
+
+  postgres:
+    restart: always
+    image: postgres:latest
+    container_name: postgres
+    ports:
+      - 5433:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=userdb
+
+  api:
+    depends_on:
+      - postgres
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: api
+    ports:
+     - 8080:8000
+    environment:
+     - POSTGRES_USER=postgres
+     - POSTGRES_PASSWORD=pass
+     - POSTGRES_HOST=postgres
+     - POSTGRES_PORT=5432
+     - POSTGRES_DB=userdb
+     - HTTP_ADDR=:8000
+     - MIGRATIONS_PATH=file://../../internal/database/migrations
